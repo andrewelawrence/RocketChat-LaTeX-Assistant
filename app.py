@@ -15,7 +15,7 @@ def hello_world():
 @app.route('/query', methods=['POST'])
 def main():
     data = request.get_json() 
-    app_logger.log(msg=data)
+    app_logger.log(level=0, msg=data)
     
     # Extract relevant information
     user = data.get("user_name", "Unknown")
