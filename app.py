@@ -1,8 +1,12 @@
 import requests
 from flask import Flask, request, jsonify
 from llmproxy import generate
+from logger_config import get_logger
 
 app = Flask(__name__)
+app_logger = get_logger(__name__)
+
+app_logger.info("Application started")
 
 @app.route('/')
 def hello_world():
@@ -11,7 +15,8 @@ def hello_world():
 @app.route('/query', methods=['POST'])
 def main():
     data = request.get_json() 
-
+    app_logger.log(msg=data)
+    
     # Extract relevant information
     user = data.get("user_name", "Unknown")
     message = data.get("text", "")
@@ -35,7 +40,7 @@ def main():
         - "What is the command for inserting a section in LaTeX?"
         - "How can I change the font size in a LaTeX document?"
         - "What package do I need to use for including graphics?"
-        - "Can you show me how to add a table with three columns in LaTeX?"
+        - "Can you show me how to add a table with three columns in LaTeX?"k
         - "How do I format a LaTeX equation to be centered?"
         - "What is the difference between \emph and \textit in LaTeX?"
         - "How can I use the align environment for multiple equations?"
