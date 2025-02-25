@@ -6,6 +6,8 @@ Reminder, export environment variables prior to running this function.
 ```bash
 $ export apiKey="x"
 $ export endPoint="y"
+
+Useful resource: https://ctan.org/tex-archive
 '''
 
 if len(sys.argv) < 2:
