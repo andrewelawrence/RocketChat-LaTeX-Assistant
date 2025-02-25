@@ -18,7 +18,6 @@ def generate(
     rag_k: int | None = 0
 	):
 	
-
     headers = {
         'x-api-key': api_key
     }
@@ -49,8 +48,6 @@ def generate(
         msg = f"An error occurred: {e}"
     return msg	
 
-
-
 def upload(multipart_form_data):
 
     headers = {
@@ -58,6 +55,7 @@ def upload(multipart_form_data):
     }
 
     msg = None
+    
     try:
         response = requests.post(end_point, headers=headers, files=multipart_form_data)
         
@@ -69,7 +67,6 @@ def upload(multipart_form_data):
         msg = f"An error occurred: {e}"
     
     return msg
-
 
 def pdf_upload(
     path: str,    
@@ -110,7 +107,6 @@ def text_upload(
         'params': (None, json.dumps(params), 'application/json'),
         'text': (None, text, "application/text")
     }
-
 
     response = upload(multipart_form_data)
     return response
