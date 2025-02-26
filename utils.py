@@ -201,9 +201,9 @@ def extract(data) -> tuple:
     user = str(data.get("user_name", "UnknownUserName"))
     msg  = str(data.get("text", ""))
     
-    uid  = _validate(uid, "uid", str, "UnknownUserID", _LOGGER.warning)
-    user = _validate(user, "user", str, "UnknownUserName", _LOGGER.warning)
-    msg  = _validate(msg, "msg", str, "", _LOGGER.warning)
+    # uid  = _validate(uid, "uid", str, "UnknownUserID", _LOGGER.warning)
+    # user = _validate(user, "user", str, "UnknownUserName", _LOGGER.warning)
+    # msg  = _validate(msg, "msg", str, "", _LOGGER.warning)
     
     # if not _UID_RE.match(uid):
     #     _LOGGER.warning(f"Potentially invalid characters in user_id: {uid}")
