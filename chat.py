@@ -1,5 +1,6 @@
 # chat.py
-import os, jsonify
+import os
+from flask import jsonify
 from config import get_logger
 from llmproxy import generate
 from utils import safe_load_text
