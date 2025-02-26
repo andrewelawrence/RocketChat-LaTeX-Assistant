@@ -2,7 +2,7 @@ import os
 import json
 import requests
 
-# Read proxy config from environment
+# Read in config
 end_point = os.environ.get("endPoint")
 api_key = os.environ.get("apiKey")
 
