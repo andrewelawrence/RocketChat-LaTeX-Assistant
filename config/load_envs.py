@@ -1,4 +1,6 @@
 # load_envs.py
+import sys, subprocess
+
 def parse_env_file(file_path="config/.env"):
     env_vars = {}
     with open(file_path) as f:
@@ -10,7 +12,19 @@ def parse_env_file(file_path="config/.env"):
     return env_vars
 
 if __name__ == "__main__":
-    envs = parse_env_file()
+    if len(sys.argv) < 2:
+        print("Usage: run.sh <script.py> [script args...]")
+        sys.exit(1)
+        
+    script = sys.argv[1]
+    script_args = sys.argv[2:]
 
-    for k, v in envs.items():
-        print(f'export {k}="{v}"')
+    envs = parse_env_file()
+    exports = " && ".join([f'export {k}="{v}"' for k,v in envs.items()])
+    
+    cmd = f"{exports} && python {script}"
+    if script_args:
+        cmd += " " + " ".join(script_args)
+
+    subprocess.run(cmd, shell=True)
+    
