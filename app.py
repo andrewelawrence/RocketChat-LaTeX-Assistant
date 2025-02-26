@@ -30,8 +30,8 @@ def main():
     else:
         return query(msg, sid)
 
-@app.route('/commands', methods=['POST'])
-def handle_commands():
+@app.route('/show_sources', methods=['POST'])
+def show_sources():
     # Enforce only JSON requests
     if not request.is_json:
         _LOGGER.warning("[SECURITY] Non-JSON request blocked.")
@@ -40,24 +40,24 @@ def handle_commands():
     data = request.get_json() 
     _LOGGER.info(data)
     
-    # Simple information extract
-    command = data.get("command")
-    uid = data.get("user_id")
-    user = data.get("user_name")
+    # TODO: access most recent message in history and display sources
+    
+    # sources = user_sources.get(user_id, ["No sources available."])
+    # return jsonify({"text": f"Here are the sources used:\n- " + "\n- ".join(sources)})
+    return jsonify({"text": "Source validation feature in development."})
 
-    if command == "/show_sources":
-        # sources = user_sources.get(user_id, ["No sources available."])
-        # return jsonify({"text": f"Here are the sources used:\n- " + "\n- ".join(sources)})
-        return jsonify({"text": "Feature in development."})
-
-    elif command == "/upload_document":
-        return jsonify({"text": "Feature in development."})
-        # return jsonify({"text": "Please upload your document(s) as an attachment in the chat. The bot will process it automatically."})
-
-    elif command == "/report_issue":
-        return jsonify({"text": f"To report an issue, please message @andrew.lawrence directly."})
-
-    return jsonify({"text": "Unknown command."})
+@app.route('/upload_document', methods=['POST'])
+def upload_document():
+    # Enforce only JSON requests
+    if not request.is_json:
+        _LOGGER.warning("[SECURITY] Non-JSON request blocked.")
+        return jsonify({"error": "Invalid content type"}), 400
+    
+    data = request.get_json() 
+    _LOGGER.info(data)
+   
+    return jsonify({"text": "Document upload feature in development."})
+    # return jsonify({"text": "Please upload your document(s) as an attachment in the chat. The bot will process it automatically."})
 
 @app.route('/')
 def hello_world():
