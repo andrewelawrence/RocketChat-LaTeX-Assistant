@@ -5,7 +5,7 @@ from logging.handlers import TimedRotatingFileHandler
 # Log directory
 _LOG_DIR = os.environ.get("logDir")
 _DEFAULT_PATH = os.path.join(_LOG_DIR, "app.log")
-_KOYEB = os.envrion.get("KOYEB_APP_NAME") not in (None, "None")
+_KOYEB = os.envrion.get("koyebAppId") not in (None, "None")
 
 # Configure the root logger
 logging.basicConfig(
@@ -19,7 +19,7 @@ logging.basicConfig(
 def get_logger(name: str, uid: str = None, stdout: bool = False) -> logging.Logger:
     """
     Returns a logger with stdout logging if running in Koyeb, otherwise logs to files.
-    - If `KOYEB_APP_NAME` is set and not "None", logs go to stdout.
+    - If `koyebAppId` is set and not "None", logs go to stdout.
     - Otherwise, logs are written to `app.log` or per-user logs if `user_id` is provided.
     """
     logger = logging.getLogger(name)
