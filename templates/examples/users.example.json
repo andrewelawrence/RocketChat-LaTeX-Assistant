@@ -1,0 +1,12 @@
+{
+  "uid0" : {
+    "sid": "sid",
+    "user": "name",
+    "created_at": "YYYY-MM-DDTHH:MM:SS.MSMSMS"
+  },
+  "uid1" : {
+    "sid": "sid",
+    "user": "name",
+    "created_at": "YYYY-MM-DDTHH:MM:SS.MSMSMS"
+  }
+}
