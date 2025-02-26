@@ -1,4 +1,5 @@
 # utils.py
+
 import os, re, time, hashlib, boto3
 from config import get_logger
 from llmproxy import upload, pdf_upload, text_upload
@@ -16,12 +17,24 @@ _DYNAMO_DB = _BOTO3_SESSION.resource("dynamodb")
 _TABLE = _DYNAMO_DB.Table(os.environ.get("dynamoTable"))
 
 _UID_RE = re.compile(r'^[A-Za-z0-9]+$')
+
 _USERS = os.environ.get("users")
 _SIDS = os.environ.get("sids")
 _INTERACTIONS = os.environ.get("interactionsDir")
 
 _GLOBAL_UPLOADS = os.environ.get("globalUploadsDir")
 _USER_UPLOADS = os.environ.get("userUploadsDir")
+
+def safe_load_text(filepath : str) -> dict:
+    """Safely read in file contents; return empty string if file not found."""
+    if not os.path.exists(filepath):
+        return ""
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            return f.read()    
+    except Exception as e:
+        _LOGGER.error(f"[FILE SYSTEM] Could not load text from {filepath}: {e}", exc_info=True)
+        return ""
 
 # def _safe_json_load(filepath : str) -> dict:
 #     """Safely load JSON; return empty structure if file not found or invalid."""
@@ -48,15 +61,15 @@ _USER_UPLOADS = os.environ.get("userUploadsDir")
 def _gen_sid() -> str:
     """Generate a hashed SID from the epoch time (or any other scheme)."""
     _HASH.update(str(time.time()).encode('utf-8'))
-    return f"sid-{_HASH.hexdigest()[:10]}"
+    return _HASH.hexdigest()[:10]
 
 def _new_sid() -> bool:
     try:
         sid = _gen_sid()
         _TABLE.put_item(
             Item={
-                "uid": "free",
-                "sid": sid,
+                "uid": str("free"),
+                "sid": str(sid),
                 "created_at": str(time.time()).encode('utf-8')
             }
         )
@@ -68,53 +81,43 @@ def _new_sid() -> bool:
         return False
         
 def _get_sid(uid: str, user: str = "UnknownName") -> tuple:
-    """
-    Determine if the UID is already tied to a SID. Otherwise, create a new SID.
-    """
-    print("uid:", uid)
-    print("uid type:", type(uid))
-
-    sid = None
-    
+    """Determine if the UID is already tied to a SID. Otherwise, create a new SID."""
+    sid = ""
     try:
         # Check if SID already exists in DynamoDB
-        try:
-            resp = _TABLE.get_item(Key={"uid": uid})
-            
-            if "Item" in resp:
-                sid = resp["Item"]["sid"]
-                _LOGGER.info(f"User <{uid}> has existing SID <{sid}>")
-                _new_sid()
-                return (sid, False)
-        except:
-            # If not, the user is new and so we return True for second part of Tuple
-            # Check if a "free" SID exists
-            resp = _TABLE.get_item(Key={"uid": "free"})
-            if "Item" in resp:
-                sid = resp["Item"]["sid"]
-                _TABLE.delete_item(Key={"uid": "free"})  # Remove old free SID
-                _LOGGER.info(f"Assigned existing free SID <{sid}> to user <{uid}>")
-            # If not, create a new SID and store it
-            else:
-                sid = _gen_sid()
-                _LOGGER.info(f"No free SID found. Created new SID <{sid}> for user <{uid}>")
-
-            # Store new SID for the user
+        resp = _TABLE.get_item(Key={"uid": uid})
+        if "Item" in resp:
+            sid = resp["Item"]["sid"]
+            _LOGGER.info(f"User <{uid}> has existing SID <{sid}>")
             _new_sid()
-            
-            return (sid, True)
-            
+            return (str(sid), False)
+
+        # If not, the user is new and so we return True for second part of Tuple
+        # Check if a "free" SID exists
+        resp = _TABLE.get_item(Key={"uid": "free"})
+        if "Item" in resp:
+            sid = resp["Item"]["sid"]
+            _TABLE.delete_item(Key={"uid": "free"})  # Remove old free SID
+            _LOGGER.info(f"Assigned existing free SID <{sid}> to user <{uid}>")
+        # If not, create a new SID and store it
+        else:
+            sid = _gen_sid()
+            _LOGGER.info(f"No free SID found. Created new SID <{sid}> for user <{uid}>")
+
+        # Store new SID for the user
+        _new_sid()
+        return (str(sid), True)
     except Exception as e:
         _LOGGER.error(f"Error accessing DynamoDB for SID: {e}", exc_info=True)
-        return ("", False)
+        return (str(""), False)
 
 def _validate(vValue, vName : str = "unknown", vType : type = str, 
               vValueDefault = None,
-              log_level = _LOGGER.warning) -> bool:
+              log_level = _LOGGER.warning):
     """
-    Verify that 'value' is an instance of 'desired_type'.
-    If not, log a message at 'log_level' and return 'default_value'.
-    Otherwise, return 'value'.
+    Verify that 'vValue' is an instance of 'vType'.
+    If not, log a message at 'log_level' and return 'vValueDefault'.
+    Otherwise, return 'vValue'.
     """
     if not isinstance(vValue, vType):
         _LOGGER.log(
@@ -122,6 +125,8 @@ def _validate(vValue, vName : str = "unknown", vType : type = str,
             f"Received non-{vType.__name__} for {vName}: {vValue}"
         )
         return vValueDefault
+    
+    return vValue
 
 def _store_interaction(data: dict, user: str, uid: str, 
                        sid: str, msg: str) -> bool:
@@ -197,16 +202,16 @@ def extract(data) -> tuple:
         _LOGGER.warning("extract() called with non-dict data.")
         return ("UnknownUserID", "UnknownUserName", "")
     
-    uid  = str(data.get("user_id", "UnknownUserID"))
-    user = str(data.get("user_name", "UnknownUserName"))
-    msg  = str(data.get("text", ""))
+    uid  = data.get("user_id", "UnknownUserID")
+    user = data.get("user_name", "UnknownUserName")
+    msg  = data.get("text", "")
     
-    # uid  = _validate(uid, "uid", str, "UnknownUserID", _LOGGER.warning)
-    # user = _validate(user, "user", str, "UnknownUserName", _LOGGER.warning)
-    # msg  = _validate(msg, "msg", str, "", _LOGGER.warning)
+    uid  = _validate(uid, "uid", str, "UnknownUserID", _LOGGER.warning)
+    user = _validate(user, "user", str, "UnknownUserName", _LOGGER.warning)
+    msg  = _validate(msg, "msg", str, "", _LOGGER.warning)
     
-    # if not _UID_RE.match(uid):
-    #     _LOGGER.warning(f"Potentially invalid characters in user_id: {uid}")
+    if not _UID_RE.match(uid):
+        _LOGGER.warning(f"Potentially invalid characters in user_id: {uid}")
     
     print("uid:", uid)
     print("uid type:", type(uid))
