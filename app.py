@@ -3,10 +3,10 @@ from flask import Flask, request, jsonify
 from llmproxy import generate
 from logger_config import get_logger
 
-app = Flask(__name__)
-app_logger = get_logger(__name__)
+_LOGGER = get_logger(__name__)
+_LOGGER.info("Application started")
 
-app_logger.info("Application started")
+app = Flask(__name__)
 
 @app.route('/')
 def hello_world():
@@ -15,7 +15,7 @@ def hello_world():
 @app.route('/query', methods=['POST'])
 def main():
     data = request.get_json() 
-    app_logger.log(level=0, msg=data)
+    _LOGGER.info(data)
     
     # Extract relevant information
     user = data.get("user_name", "Unknown")
