@@ -1,33 +1,32 @@
-import requests
 from flask import Flask, request, jsonify
 from llmproxy import generate
-from logger_config import get_logger
+from config import get_logger
+from utils import extract, upload
 
 _LOGGER = get_logger(__name__)
 _LOGGER.info("Application started")
 
 app = Flask(__name__)
 
-@app.route('/')
-def hello_world():
-   return jsonify({"message":'There is nothing on this page. Please return to where you came from!'})
-
 @app.route('/query', methods=['POST'])
 def main():
+    # Enforce only JSON requests
+    if not request.is_json:
+        _LOGGER.warning("[SECURITY] Non-JSON request blocked.")
+        return jsonify({"error": "Invalid content type"}), 400
+    
     data = request.get_json() 
     _LOGGER.info(data)
     
-    # Extract relevant information
-    user = data.get("user_name", "Unknown")
-    message = data.get("text", "")
-
-    print(data)
-
     # Ignore bot messages
-    if data.get("bot") or not message:
+    if data.get("bot") or not msg:
         return jsonify({"status": "ignored"})
 
-    print(f"Message from {user} : {message}")
+    # Extract relevant information
+    # (Extract also does some very important cataloguing.)
+    user, uid, sid, msg = extract(data)
+
+    print(f"Message from {user} : {msg}")
 
     # Generate a response using LLMProxy
     response = generate(
@@ -91,7 +90,7 @@ def main():
         - Keep responses focused, accurate, and concise. 
         - If you're unable to help, say so.
         ''',
-        query= message,
+        query= msg,
         temperature=0.3,
         lastk=0,
         rag_usage=True,
@@ -107,9 +106,14 @@ def main():
 
     return jsonify({"text": response_text})
     
+@app.route('/')
+def hello_world():
+   return jsonify({"message":'There is nothing on this page. Please return to where you came from!'})
+
 @app.errorhandler(404)
 def page_not_found(e):
     return "Error 404: Page Not Found", 404
 
 if __name__ == "__main__":
     app.run()
+    
