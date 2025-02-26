@@ -26,7 +26,7 @@ def main():
         return jsonify({"status": "ignored"})
         
     if new:
-        return welcome()
+        return welcome(uid, user)
     else:
         return query(msg, sid)
 

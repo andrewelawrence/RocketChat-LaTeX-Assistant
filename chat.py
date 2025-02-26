@@ -14,7 +14,7 @@ _RAG = os.environ.get("rag_usage")
 _RAG_K = os.environ.get("rag_k")
 _RAG_THR = os.environ.get("rag_threshold")
 
-def welcome(uid, user):
+def welcome(uid: str, user: str):
     with open(_WELCOME, "r", encoding="utf-8") as f:
         welcome = f.read()
     
