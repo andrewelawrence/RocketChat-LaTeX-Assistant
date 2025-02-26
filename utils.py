@@ -69,10 +69,12 @@ def _new_sid() -> bool:
         _LOGGER.error(f"Error creating overhead SID in DynamoDB: {e}", exc_info=True)
         return False
         
-def _get_sid(uid: str, user: str = "UnknownName") -> str:
+def _get_sid(uid: str, user: str = "UnknownName") -> tuple:
     """
     Determine if the UID is already tied to a SID. Otherwise, create a new SID.
     """
+    sid = None
+    
     try:
         # Check if SID already exists in DynamoDB
         resp = _TABLE.get_item(Key={"uid": uid})
@@ -80,8 +82,9 @@ def _get_sid(uid: str, user: str = "UnknownName") -> str:
             sid = resp["Item"]["sid"]
             _LOGGER.info(f"User <{uid}> has existing SID <{sid}>")
             _new_sid()
-            return sid
-
+            return (sid, False)
+        
+        # If not, the user is new and so we return True for second part of Tuple
         # Check if a "free" SID exists
         resp = _TABLE.get_item(Key={"uid": "free"})
         if "Item" in resp:
@@ -96,9 +99,11 @@ def _get_sid(uid: str, user: str = "UnknownName") -> str:
         # Store new SID for the user
         _new_sid()
         
+        return (sid, True)
+        
     except Exception as e:
         _LOGGER.error(f"Error accessing DynamoDB for SID: {e}", exc_info=True)
-        return ""
+        return ("", False)
 
 def _validate(vValue, vName : str = "unknown", vType : type = str, 
               vValueDefault = None,
@@ -198,9 +203,9 @@ def extract(data : dict) -> tuple:
     #     _LOGGER.warning(f"Potentially invalid characters in user_id: {uid}")
 
     # Fetch/create SID from DynamoDB
-    sid = _get_sid(uid, user)
+    sid, new = _get_sid(uid, user)
 
     # Store conversation in DynamoDB
     _store_interaction(data, user, uid, sid, msg)
 
-    return (user, uid, sid, msg)
+    return (user, uid, new, sid, msg)

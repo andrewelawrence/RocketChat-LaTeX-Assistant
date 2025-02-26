@@ -20,8 +20,11 @@ def main():
     
     # Extract relevant information
     # (Extract also does some very important cataloguing.)
-    user, uid, sid, msg = extract(data)
+    user, uid, new, sid, msg = extract(data)
 
+    if new:
+        return jsonify({"text": "Hi! it seems I havent't met you yet!"})
+    
     print(f"Message from {user} : {msg}")
 
     # Generate a response using LLMProxy
