@@ -18,10 +18,6 @@ def main():
     data = request.get_json() 
     _LOGGER.info(data)
     
-    # Ignore bot messages
-    if data.get("bot") or not msg:
-        return jsonify({"status": "ignored"})
-
     # Extract relevant information
     # (Extract also does some very important cataloguing.)
     user, uid, sid, msg = extract(data)
