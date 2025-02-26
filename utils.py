@@ -1,7 +1,6 @@
 # utils.py
-import os, json, re, time, hashlib, boto3
+import os, re, time, hashlib, boto3
 from config import get_logger
-from datetime import datetime
 from llmproxy import upload, pdf_upload, text_upload
 
 _LOGGER = get_logger(__name__)
@@ -58,7 +57,7 @@ def _new_sid() -> bool:
             Item={
                 "uid": "free",
                 "sid": sid,
-                "created_at": datetime.isoformat()
+                "created_at": str(time.time()).encode('utf-8')
             }
         )
         
@@ -72,6 +71,9 @@ def _get_sid(uid: str, user: str = "UnknownName") -> tuple:
     """
     Determine if the UID is already tied to a SID. Otherwise, create a new SID.
     """
+    print("uid:", uid)
+    print("uid type:", type(uid))
+
     sid = None
     
     try:
@@ -124,6 +126,8 @@ def _validate(vValue, vName : str = "unknown", vType : type = str,
 def _store_interaction(data: dict, user: str, uid: str, 
                        sid: str, msg: str) -> bool:
     """Stores the data payload in DynamoDB instead of local files."""
+    print("uid:", uid)
+    print("uid type:", type(uid))
     try:
         timestamp = data.get("timestamp", "UnknownTimestamp")
         timestamp = data.get("timestamp", "UnknownTimestamp")
@@ -203,7 +207,14 @@ def extract(data : dict) -> tuple:
     
     # if not _UID_RE.match(uid):
     #     _LOGGER.warning(f"Potentially invalid characters in user_id: {uid}")
-
+    
+    print("uid:", uid)
+    print("uid type:", type(uid))
+    print("user", user)
+    print("user type:", type(user))
+    print("msg", msg)
+    print("msg type:", type(msg))
+    
     # Fetch/create SID from DynamoDB
     sid, new = _get_sid(uid, user)
 
