@@ -1,5 +1,40 @@
-import requests
+#
+# Reminder, export environment variables prior to running this function.
+#
+# ```bash
+# $ ./load_envs.sh
+# ```
+#
 
-data = {"text":"how can I make a centered table with 3 columns?"}
-response_llmproxy = requests.post("https://operational-missie-tufts-cs0150-04-spr25-76ae7ad6.koyeb.app/query", json=data)
-print('LLMProxy Response:\n', response_llmproxy.text)
+import os, requests
+from logger_config import get_logger
+
+# Setup logger
+_LOGGER = get_logger(__name__)
+_LOGGER.info("Test Process Begun.")
+
+# Read in config
+msgUrl = os.environ.get("msgUrl")
+koyebUrl = os.environ.get("koyebUrl")
+rcBotToken = os.environ.get("rcBotToken")
+rcBotId = os.environ.get("rcUserId")
+testUser = os.environ.get("testUser")
+
+# Setup http POST
+headers = {
+    "Content-Type": "application/json",
+    "X-Auth-Token": rcBotToken,
+    "X-User-Id": rcBotId
+}
+
+payload = {
+    "channel": testUser,
+    "text": "This is a direct message from the bot"
+}
+
+# POST
+resp = requests.post(koyebUrl, json=payload, headers=headers)
+
+# Log Response
+_LOGGER.info("Status Code: ", resp.status_code)
+_LOGGER.info('LLMProxy Response: ', resp.text)
