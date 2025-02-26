@@ -1,92 +1,98 @@
 # utils.py
-import os, json, re, time, hashlib
+import os, json, re, time, hashlib, boto3
 from config import get_logger
 from datetime import datetime
 from llmproxy import upload, pdf_upload, text_upload
 
 _LOGGER = get_logger(__name__)
 _HASH = hashlib.sha1()
+
+_S3_BUCKET = boto3.client("s3", region_name=os.environ.get("awsRegion"))
+_DYNAMO_DB = boto3.resource("dynamodb", region_name=os.environ.get("awsRegion"))
+_TABLE = _DYNAMO_DB.Table(os.environ.get("dynamoTable"))
+
 _UID_RE = re.compile(r'^[A-Za-z0-9]+$')
 _USERS = os.environ.get("users")
 _SIDS = os.environ.get("sids")
 _INTERACTIONS = os.environ.get("interactionsDir")
+
 _GLOBAL_UPLOADS = os.environ.get("globalUploadsDir")
 _USER_UPLOADS = os.environ.get("userUploadsDir")
 
-def _safe_json_load(filepath : str) -> dict:
-    """Safely load JSON; return empty structure if file not found or invalid."""
-    if not os.path.exists(filepath):
-        return {}
-    try:
-        with open(filepath, "r") as f:
-            return json.load(f)
-    except Exception as e:
-        _LOGGER.error(f"[FILE SYSTEM] Could not load JSON from {filepath}: {e}", exc_info=True)
-        return {}
+# def _safe_json_load(filepath : str) -> dict:
+#     """Safely load JSON; return empty structure if file not found or invalid."""
+#     if not os.path.exists(filepath):
+#         return {}
+#     try:
+#         with open(filepath, "r") as f:
+#             return json.load(f)
+#     except Exception as e:
+#         _LOGGER.error(f"[FILE SYSTEM] Could not load JSON from {filepath}: {e}", exc_info=True)
+#         return {}
     
-def _safe_json_save(filepath : str, data : dict) -> bool:
-    """Safely save JSON."""
-    os.makedirs(os.path.dirname(filepath), exist_ok=True)
-    
-    try:
-        with open(filepath, "w") as f:
-            json.dump(data, f, indent=2)
-            
-        return True 
-    except Exception as e:
-        _LOGGER.error(f"[FILE SYSTEM] Could not save JSON to {filepath}: {e}", exc_info=True)
-        return False
+# def _safe_json_save(filepath : str, data : dict) -> bool:
+#     """Safely save JSON."""
+#     os.makedirs(os.path.dirname(filepath), exist_ok=True)
+#     try:
+#         with open(filepath, "w") as f:
+#             json.dump(data, f, indent=2)
+#         return True 
+#     except Exception as e:
+#         _LOGGER.error(f"[FILE SYSTEM] Could not save JSON to {filepath}: {e}", exc_info=True)
+#         return False
     
 def _gen_sid() -> str:
     """Generate a hashed SID from the epoch time (or any other scheme)."""
     _HASH.update(str(time.time()).encode('utf-8'))
     return f"sid-{_HASH.hexdigest()[:10]}"
 
+def _new_sid() -> bool:
+    try:
+        sid = _gen_sid()
+        _TABLE.put_item(
+            Item={
+                "user_id": "free",
+                "sid": sid,
+                "created_at": datetime.isoformat()
+            }
+        )
+        
+        _LOGGER.info(f"Reserved new free SID <{sid}> for future assignment.")    
+        return True
+    except Exception as e:
+        _LOGGER.error(f"Error creating overhead SID in DynamoDB: {e}", exc_info=True)
+        return False
+        
 def _get_sid(uid: str, user: str = "UnknownName") -> str:
     """
-    Determine if the UID is already tied to a SID.
-    If not, try to use a free SID or create a new one.
-    Returns the SID string.
+    Determine if the UID is already tied to a SID. Otherwise, create a new SID.
     """
+    try:
+        # Check if SID already exists in DynamoDB
+        resp = _TABLE.get_item(Key={"uid": uid})
+        if "Item" in resp:
+            sid = resp["Item"]["sid"]
+            _LOGGER.info(f"User <{uid}> has existing SID <{sid}>")
+            _new_sid()
+            return sid
 
-    sids  = _safe_json_load(_SIDS)
-    users = _safe_json_load(_USERS)
-    
-    sid = None
-    
-    # User already exists and has SID
-    if uid in sids:
-        sid = sids[uid]
-        _LOGGER.info(f"User <{uid}> has existing SID <{sid}>")
-    # New user
-    else:
-        if "free" in sids:
-            sid = sids["free"]
-            sids[uid] = sid
-            del sids["free"]
+        # Check if a "free" SID exists
+        resp = _TABLE.get_item(Key={"uid": "free"})
+        if "Item" in resp:
+            sid = resp["Item"]["sid"]
+            _TABLE.delete_item(Key={"uid": "free"})  # Remove old free SID
             _LOGGER.info(f"Assigned existing free SID <{sid}> to user <{uid}>")
+        # If not, create a new SID and store it
         else:
-            # No 'free' key found, create a new SID for the user
-            # (This case should never happen as a new SID is always generated below)
             sid = _gen_sid()
-            sids[uid] = sid
             _LOGGER.info(f"No free SID found. Created new SID <{sid}> for user <{uid}>")
-        # Log new user info in users.json
-        users[uid] = {
-            "sid": sid,
-            "user": user,
-            "created_at": datetime.utcnow().isoformat()
-        }
-        _LOGGER.info(f"New user <{uid}> added with SID <{sid}>")    
 
-    free_sid = _gen_sid()
-    sids["free"] = free_sid
-    _LOGGER.info(f"Reserved new free SID <{free_sid}> for future assignment.")
-    
-    _safe_json_save(_SIDS, sids)
-    _safe_json_save(_USERS, users)
-    
-    return sid    
+        # Store new SID for the user
+        _new_sid()
+        
+    except Exception as e:
+        _LOGGER.error(f"Error accessing DynamoDB for SID: {e}", exc_info=True)
+        return ""
 
 def _validate(vValue, vName : str = "unknown", vType : type = str, 
               vValueDefault = None,
@@ -105,10 +111,7 @@ def _validate(vValue, vName : str = "unknown", vType : type = str,
 
 def _store_interaction(data: dict, user: str, uid: str, 
                        sid: str, msg: str) -> bool:
-    """
-    Saves the data payload to a file in:
-      _INTERACTIONS/<uid>/<user>-YYYY-MM-DDTHH:MM:SS.MSMSMS.json
-    """
+    """Stores the data payload in DynamoDB instead of local files."""
     try:
         timestamp = data.get("timestamp", "UnknownTimestamp")
         interaction = {
@@ -124,28 +127,59 @@ def _store_interaction(data: dict, user: str, uid: str,
                 "msg": msg
             }
         
-        fname = f"{user}-{timestamp}.json"
-        fp = os.path.join(_INTERACTIONS, uid, fname)
-        
-        _safe_json_save(fp, interaction)
-        _LOGGER.info(f"Conversation history saved to {fp}")
+        # Store interaction in DynamoDB
+        _TABLE.put_item(Item=interaction)
+        _LOGGER.info(f"Conversation history saved for user <{uid}> at {timestamp}")
         return True
-    
+        
     except Exception as e:
-        _LOGGER.error(f"Failed to save conversation history: {e}", exc_info=True)
+        _LOGGER.error(f"Failed to save conversation history to DynamoDB: {e}", exc_info=True)
         return False   
 
 def upload(sid : str) -> bool:
     """Upload any file type"""
     return False
+# def generate_presigned_url(user_id: str, filename: str, action="get_object") -> str:
+#     """Generate a pre-signed URL for secure file access in S3."""
+
+#     try:
+#         bucket = os.getenv("S3_BUCKET_NAME")
+#         s3_key = f"uploads/users/{user_id}/{filename}"
+
+#         url = _S3_BUCKET.generate_presigned_url(
+#             action,
+#             Params={"Bucket": bucket, "Key": s3_key},
+#             ExpiresIn=3600  # Link expires in 1 hour
+#         )
+#         return url
+
+#     except Exception as e:
+#         _LOGGER.error(f"Failed to generate presigned URL: {e}", exc_info=True)
+#         return None
+# def upload_file_to_s3(file_path: str, user_id: str, filename: str) -> str:
+#     """Uploads a file to S3 under the user's directory and returns the S3 URL."""
+
+#     try:
+#         bucket = os.getenv("S3_BUCKET_NAME")
+#         s3_key = f"uploads/users/{user_id}/{filename}"
+
+#         _S3_BUCKET.upload_file(file_path, bucket, s3_key)
+        
+#         s3_url = f"https://{bucket}.s3.amazonaws.com/{s3_key}"
+#         _LOGGER.info(f"File uploaded to {s3_url}")
+#         return s3_url
+
+#     except Exception as e:
+#         _LOGGER.error(f"File upload failed: {e}", exc_info=True)
+#         return None
 
 def extract(data : dict) -> tuple:
-    """"""
+    """Extract user information and store conversation to DynamoDB."""
+    
     if not isinstance(data, dict):
         _LOGGER.warning("extract() called with non-dict data.")
         return ("UnknownUserID", "UnknownUserName", "")
     
-    # Extract USER info
     uid  = data.get("user_id", "UnknownUserID")
     user = data.get("user_name", "UnknownUserName")
     msg  = data.get("text", "")
@@ -154,14 +188,13 @@ def extract(data : dict) -> tuple:
     user = _validate(user, "user", str, "UnknownUserName", _LOGGER.warning)
     msg  = _validate(msg, "msg", str, "", _LOGGER.warning)
     
-    # Keep an eye out for suspect UIDs
     if not _UID_RE.match(uid):
         _LOGGER.warning(f"Potentially invalid characters in user_id: {uid}")
 
-    # Get/create SID
+    # Fetch/create SID from DynamoDB
     sid = _get_sid(uid, user)
 
-    # Store conversation to database
+    # Store conversation in DynamoDB
     _store_interaction(data, user, uid, sid, msg)
 
     return (user, uid, sid, msg)
