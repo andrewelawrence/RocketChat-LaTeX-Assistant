@@ -76,31 +76,32 @@ def _get_sid(uid: str, user: str = "UnknownName") -> tuple:
     
     try:
         # Check if SID already exists in DynamoDB
-        resp = _TABLE.get_item(Key={"uid": {"S": str(uid)}})
+        try:
+            resp = _TABLE.get_item(Key={"uid": uid})
+            
+            if "Item" in resp:
+                sid = resp["Item"]["sid"]
+                _LOGGER.info(f"User <{uid}> has existing SID <{sid}>")
+                _new_sid()
+                return (sid, False)
+        except:
+            # If not, the user is new and so we return True for second part of Tuple
+            # Check if a "free" SID exists
+            resp = _TABLE.get_item(Key={"uid": "free"})
+            if "Item" in resp:
+                sid = resp["Item"]["sid"]
+                _TABLE.delete_item(Key={"uid": "free"})  # Remove old free SID
+                _LOGGER.info(f"Assigned existing free SID <{sid}> to user <{uid}>")
+            # If not, create a new SID and store it
+            else:
+                sid = _gen_sid()
+                _LOGGER.info(f"No free SID found. Created new SID <{sid}> for user <{uid}>")
 
-        if "Item" in resp:
-            sid = resp["Item"]["sid"]
-            _LOGGER.info(f"User <{uid}> has existing SID <{sid}>")
+            # Store new SID for the user
             _new_sid()
-            return (sid, False)
-        
-        # If not, the user is new and so we return True for second part of Tuple
-        # Check if a "free" SID exists
-        resp = _TABLE.get_item(Key={"uid": "free"})
-        if "Item" in resp:
-            sid = resp["Item"]["sid"]
-            _TABLE.delete_item(Key={"uid": "free"})  # Remove old free SID
-            _LOGGER.info(f"Assigned existing free SID <{sid}> to user <{uid}>")
-        # If not, create a new SID and store it
-        else:
-            sid = _gen_sid()
-            _LOGGER.info(f"No free SID found. Created new SID <{sid}> for user <{uid}>")
-
-        # Store new SID for the user
-        _new_sid()
-        
-        return (sid, True)
-        
+            
+            return (sid, True)
+            
     except Exception as e:
         _LOGGER.error(f"Error accessing DynamoDB for SID: {e}", exc_info=True)
         return ("", False)
@@ -127,16 +128,16 @@ def _store_interaction(data: dict, user: str, uid: str,
         timestamp = data.get("timestamp", "UnknownTimestamp")
         timestamp = data.get("timestamp", "UnknownTimestamp")
         interaction = {
-            "user": {"S": user if user else "Unknown"},
-            "uid": {"S": str(uid)}, 
-            "sid": {"S": sid if sid else "Unknown"},
-            "mid": {"S": data.get("message_id", "UnknownMessageID")},
-            "cid": {"S": data.get("channel_id", "UnknownChannelID")},
-            "timestamp": {"S": timestamp},
-            "token": {"S": data.get("token", "")},
-            "bot": {"BOOL": data.get("bot", False)},
-            "url": {"S": data.get("siteUrl", "")},
-            "msg": {"S": msg if msg else ""}
+            "user": user,
+            "uid": uid, 
+            "sid": sid ,
+            "mid": data.get("message_id", "UnknownMessageID"),
+            "cid": data.get("channel_id", "UnknownChannelID"),
+            "timestamp": timestamp,
+            "token": data.get("token", ""),
+            "bot": data.get("bot", False),
+            "url": data.get("siteUrl", ""),
+            "msg": msg
         }        
         
         # Store interaction in DynamoDB
