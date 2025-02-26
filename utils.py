@@ -7,14 +7,13 @@ from llmproxy import upload, pdf_upload, text_upload
 _LOGGER = get_logger(__name__)
 _HASH = hashlib.sha1()
 
-#_S3_SESSION = boto3.Session(
-#    aws_access_key_id=os.environ.get("awsAccessKey"),
-#    aws_secret_access_key=os.environ.get("awsSecretKey"),
-#    aws_region_name=os.environ.get("awsRegion")
-#)
-#_S3_BUCKET = _S3_SESSION.client("s3")
-#_S3_BUCKET = boto3.client("s3", region_name=os.environ.get("awsRegion"))
-_DYNAMO_DB = boto3.resource("dynamodb", region_name=os.environ.get("awsRegion"))
+_BOTO3_SESSION = boto3.Session(
+   aws_access_key_id=os.environ.get("awsAccessKey"),
+   aws_secret_access_key=os.environ.get("awsSecretKey"),
+   region_name=os.environ.get("awsRegion")
+)
+_S3_BUCKET = _BOTO3_SESSION.client("s3")
+_DYNAMO_DB = _BOTO3_SESSION.resource("dynamodb")
 _TABLE = _DYNAMO_DB.Table(os.environ.get("dynamoTable"))
 
 _UID_RE = re.compile(r'^[A-Za-z0-9]+$')
