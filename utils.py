@@ -56,7 +56,7 @@ def _new_sid() -> bool:
         sid = _gen_sid()
         _TABLE.put_item(
             Item={
-                "user_id": "free",
+                "uid": "free",
                 "sid": sid,
                 "created_at": datetime.isoformat()
             }
@@ -76,7 +76,8 @@ def _get_sid(uid: str, user: str = "UnknownName") -> tuple:
     
     try:
         # Check if SID already exists in DynamoDB
-        resp = _TABLE.get_item(Key={"uid": uid})
+        resp = _TABLE.get_item(Key={"uid": {"S": str(uid)}})
+
         if "Item" in resp:
             sid = resp["Item"]["sid"]
             _LOGGER.info(f"User <{uid}> has existing SID <{sid}>")
@@ -124,18 +125,19 @@ def _store_interaction(data: dict, user: str, uid: str,
     """Stores the data payload in DynamoDB instead of local files."""
     try:
         timestamp = data.get("timestamp", "UnknownTimestamp")
+        timestamp = data.get("timestamp", "UnknownTimestamp")
         interaction = {
-                "user": user,
-                "uid": uid,
-                "sid": sid,
-                "mid": data.get("message_id", "UnknownMessageID"),
-                "cid": data.get("channel_id", "UnknownChannelID"),
-                "timestamp": timestamp,
-                "token": data.get("token", None),
-                "bot": data.get("bot", False),
-                "url": data.get("siteUrl", None),
-                "msg": msg
-            }
+            "user": {"S": user if user else "Unknown"},
+            "uid": {"S": str(uid)}, 
+            "sid": {"S": sid if sid else "Unknown"},
+            "mid": {"S": data.get("message_id", "UnknownMessageID")},
+            "cid": {"S": data.get("channel_id", "UnknownChannelID")},
+            "timestamp": {"S": timestamp},
+            "token": {"S": data.get("token", "")},
+            "bot": {"BOOL": data.get("bot", False)},
+            "url": {"S": data.get("siteUrl", "")},
+            "msg": {"S": msg if msg else ""}
+        }        
         
         # Store interaction in DynamoDB
         _TABLE.put_item(Item=interaction)
