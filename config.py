@@ -5,7 +5,7 @@ from logging.handlers import TimedRotatingFileHandler
 # Log directory
 _LOG_DIR = os.environ.get("logDir")
 _DEFAULT_PATH = os.path.join(_LOG_DIR, "app.log")
-_KOYEB = os.envrion.get("koyebAppId") not in (None, "None")
+_KOYEB = os.environ.get("koyebAppId") not in (None, "None")
 
 # Configure the root logger
 logging.basicConfig(
