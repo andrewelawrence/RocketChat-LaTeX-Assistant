@@ -190,16 +190,16 @@ def upload(sid : str) -> bool:
 #         _LOGGER.error(f"File upload failed: {e}", exc_info=True)
 #         return None
 
-def extract(data : dict) -> tuple:
+def extract(data) -> tuple:
     """Extract user information and store conversation to DynamoDB."""
     
     if not isinstance(data, dict):
         _LOGGER.warning("extract() called with non-dict data.")
         return ("UnknownUserID", "UnknownUserName", "")
     
-    uid  = data.get("user_id", "UnknownUserID")
-    user = data.get("user_name", "UnknownUserName")
-    msg  = data.get("text", "")
+    uid  = str(data.get("user_id", "UnknownUserID"))
+    user = str(data.get("user_name", "UnknownUserName"))
+    msg  = str(data.get("text", ""))
     
     uid  = _validate(uid, "uid", str, "UnknownUserID", _LOGGER.warning)
     user = _validate(user, "user", str, "UnknownUserName", _LOGGER.warning)
