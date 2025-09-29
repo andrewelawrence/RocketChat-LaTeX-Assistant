@@ -1,30 +1,32 @@
-### Koyeb
-GitHub Repository linked to Koyeb Server for Distribution of CS0150 Chatbots on Rocket.Chat
+# Rocket.Chat LLM Gateway on Koyeb
+A minimal Flask service deployed on Koyeb that connects Rocket.Chat to an early, non-distributed version of LLMProxy used in the paper [LLMProxy: Reducing Cost to Access Large Language Models](https://arxiv.org/pdf/2410.11857). Originally used to test out hosting chatbots on Rocket.Chat and has since been abandoned.
 
-#### Setup
-Update .env.example variables to a .env file
+## Configuration
+Place environment variables in `config/.env` (not committed) and load with the provided helper scripts.
 
-#### Koyeb
-Install (for Linux)
+#### Koyeb CLI quickstart (Linux):
 ```bash
 curl -fsSL https://raw.githubusercontent.com/koyeb/koyeb-cli/master/install.sh | sh
-echo "add export PATH=$HOME/.koyeb/bin:$PATH to your .bashrc"
-```
-Login
-```bash
+# add export PATH=$HOME/.koyeb/bin:$PATH to your .bashrc
 koyeb login
+# redeploy example (replace with your service name)
+koyeb service redeploy <your-org>/<your-service-name>
 ```
-Deployment
+
+## Testing
+With environment set (see `config/.env`), you can run:
 ```bash
-koyeb service redeploy operational-missie/server-name
+./run.sh test.py
 ```
+This script posts a test message, useful for verifying end-to-end connectivity.
 
-#### Notes
-Useful resource: https://ctan.org/tex-archive
-https://developer.rocket.chat/apidocs/message
+## Project structure
+- `app.py`: Flask app, routes (`/query`, `/show_sources`, `/upload_document`)
+- `chat.py`: Welcome text and LLM response assembly
+- `llmproxy.py`: Thin client for early LLMProxy (`/call`, `/retrieve`, `/add`)
+- `utils.py`: AWS DynamoDB session and persistence, session ID generation, helpers
+- `config/load_envs.py`: Loads `config/.env` and runs a target script
+- `requirements.txt`, `Procfile`, `run.sh`
 
-
-# Potential features
-make the LLM tell the user's level - novice, advanced, expert, etc.?
-brevity is best: use buttons, split up into multiple lines, etc.
-long-term memory about the user is key.
+## Acknowledgements
+- Early LLMProxy implementation used here is from the paper: [LLMProxy: Reducing Cost to Access Large Language Models](https://arxiv.org/pdf/2410.11857).
