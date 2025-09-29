@@ -57,7 +57,7 @@ def upload_document():
     _LOGGER.info(data)
    
     return jsonify({"text": "Document upload feature in development."})
-    # return jsonify({"text": "Please upload your document(s) as an attachment in the chat. The bot will process it automatically."})
+    # return jsonify({"text": "Please attach your document(s), the bot will process it automatically."})
 
 @app.route('/')
 def hello_world():
@@ -69,4 +69,3 @@ def page_not_found(e):
 
 if __name__ == "__main__":
     app.run(debug=True)
-    
