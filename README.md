@@ -1,4 +1,4 @@
-# Rocket.Chat LLM Gateway on Koyeb
+# Rocket.Chat LaTeX LLM Assistant Gateway via  Koyeb
 A minimal Flask service deployed on Koyeb that connects Rocket.Chat to an early, non-distributed version of LLMProxy used in the paper [LLMProxy: Reducing Cost to Access Large Language Models](https://arxiv.org/pdf/2410.11857). Originally used to test out hosting chatbots on Rocket.Chat and has since been abandoned.
 
 ## Configuration
