@@ -7,7 +7,7 @@
 #
 
 import os, requests
-from logger_config import get_logger
+from config import get_logger
 
 # Setup logger
 _LOGGER = get_logger(__name__)
@@ -19,6 +19,7 @@ koyebUrl = os.environ.get("koyebUrl")
 rcBotToken = os.environ.get("rcBotToken")
 rcBotId = os.environ.get("rcUserId")
 testUser = os.environ.get("testUser")
+testText = open(os.environ.get("testText")).read()
 
 # Setup http POST
 headers = {
@@ -29,12 +30,12 @@ headers = {
 
 payload = {
     "channel": testUser,
-    "text": "This is a direct message from the bot"
+    "text": testText
 }
 
 # POST
 resp = requests.post(koyebUrl, json=payload, headers=headers)
 
 # Log Response
-_LOGGER.info("Status Code: ", resp.status_code)
-_LOGGER.info('LLMProxy Response: ', resp.text)
+_LOGGER.info((f"Status Code: {resp.status_code}"))
+_LOGGER.info((f"LLMProxy Response: {resp.text}"))
