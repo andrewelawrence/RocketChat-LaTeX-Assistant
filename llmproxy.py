@@ -6,6 +6,38 @@ import requests
 end_point = os.environ.get("endPoint")
 api_key = os.environ.get("apiKey")
 
+def retrieve(
+    query: str,
+    session_id: str,
+    rag_threshold: float,
+    rag_k: int
+    ):
+
+    headers = {
+        'x-api-key': api_key,
+        'request_type': 'retrieve'
+    }
+
+    request = {
+        'query': query,
+        'session_id': session_id,
+        'rag_threshold': rag_threshold,
+        'rag_k': rag_k
+    }
+
+    msg = None
+
+    try:
+        response = requests.post(end_point, headers=headers, json=request)
+
+        if response.status_code == 200:
+            msg = json.loads(response.text)
+        else:
+            msg = f"Error: Received response code {response.status_code}"
+    except requests.exceptions.RequestException as e:
+        msg = f"An error occurred: {e}"
+    return msg  
+
 def generate(
 	model: str,
 	system: str,
@@ -18,8 +50,10 @@ def generate(
     rag_k: int | None = 0
 	):
 	
+
     headers = {
-        'x-api-key': api_key
+        'x-api-key': api_key,
+        'request_type': 'call'
     }
 
     request = {
@@ -48,14 +82,16 @@ def generate(
         msg = f"An error occurred: {e}"
     return msg	
 
+
+
 def upload(multipart_form_data):
 
     headers = {
-        'x-api-key': api_key
+        'x-api-key': api_key,
+        'request_type': 'add'
     }
 
     msg = None
-    
     try:
         response = requests.post(end_point, headers=headers, files=multipart_form_data)
         
@@ -67,6 +103,7 @@ def upload(multipart_form_data):
         msg = f"An error occurred: {e}"
     
     return msg
+
 
 def pdf_upload(
     path: str,    
@@ -107,6 +144,7 @@ def text_upload(
         'params': (None, json.dumps(params), 'application/json'),
         'text': (None, text, "application/text")
     }
+
 
     response = upload(multipart_form_data)
     return response
